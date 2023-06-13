@@ -18,11 +18,11 @@ module load mamba
 source ~/miniconda3/bin/activate
 conda activate /home/ppooja/data/conda/envs/shirin-codet5
 
-# install requirements when you create the environment first time
+# install requirements when you create the environment first-time
 #pip install -r requirements.txt
 
-#login wandb when you create the environment first time
-wandb login ad0921ed43577ed9f931b849f991006e216a7a38
+#login wandb when you create the environment the first time
+wandb login <your-auth-key>
 
 #chmod +x ./sh/pre-train.sh
 
