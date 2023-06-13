@@ -7,11 +7,10 @@ from data.data_collator import collate_fn
 
 
 def init_all(args):
-	dataset_pre_trained = init_dataset(args=args, mode=enums.TRAINING_MODE_PRE_TRAIN)
 
-	dataset_bug_fix_small_train =  init_dataset(args=args, mode=enums.TRAINING_MODE_FINE_TUNE, task=enums.TASK_BUG_FIX, language='small', split='train')
-	dataset_bug_fix_small_valid =  init_dataset(args=args, mode=enums.TRAINING_MODE_FINE_TUNE, task=enums.TASK_BUG_FIX, language='small', split='valid')
-	dataset_bug_fix_small_test =  init_dataset(args=args, mode=enums.TRAINING_MODE_FINE_TUNE, task=enums.TASK_BUG_FIX, language='small', split='test')
+	dataset_code2code_train =  init_dataset(args=args, mode=enums.TRAINING_MODE_FINE_TUNE, task=enums.TASK_CODE2CODE, split='train',load_if_saved=False)
+	dataset_code2code_valid =  init_dataset(args=args, mode=enums.TRAINING_MODE_FINE_TUNE, task=enums.TASK_CODE2CODE, split='valid',load_if_saved=False)
+	dataset_code2code_test =  init_dataset(args=args, mode=enums.TRAINING_MODE_FINE_TUNE, task=enums.TASK_CODE2CODE, split='test',load_if_saved=False)
 
 	# code vocab
 	code_vocab = init_vocab(vocab_save_dir=args.vocab_save_dir,
@@ -19,41 +18,16 @@ def init_all(args):
 	                        method=args.code_tokenize_method,
 	                        vocab_size=args.code_vocab_size,
 	                        datasets=[
-	                        	dataset_pre_trained.codes, dataset_pre_trained.rtd_masked_code, dataset_pre_trained.rtd_output, \
-	                        	dataset_bug_fix_small_train.codes, dataset_bug_fix_small_train.targets, \
-	                        	dataset_bug_fix_small_valid.codes, dataset_bug_fix_small_valid.targets, \
-	                        	dataset_bug_fix_small_test.codes, dataset_bug_fix_small_test.targets
+								dataset_code2code_train.codes, dataset_code2code_train.targets, \
+								dataset_code2code_valid.codes, dataset_code2code_valid.targets, \
+								dataset_code2code_test.codes, dataset_code2code_test.targets
 	                        ],
 	                        ignore_case=True,
 	                        save_root=args.vocab_root,
 	                        load_if_saved=False)
-	# nl vocab
-	nl_vocab = init_vocab(vocab_save_dir=args.vocab_save_dir,
-	                      name=args.nl_vocab_name,
-	                      method=args.nl_tokenize_method,
-	                      vocab_size=args.nl_vocab_size,
-	                      datasets=[
-	                      	dataset_pre_trained.names, dataset_pre_trained.docs, dataset_pre_trained.only_names, \
-	                      	dataset_bug_fix_small_train.comments, dataset_bug_fix_small_valid.comments, dataset_bug_fix_small_test.comments
-	                      ],
-	                      ignore_case=True,
-	                      save_root=args.vocab_root,
-	                      index_offset=len(code_vocab),
-	                      load_if_saved=False)
-	# ast vocab
-	ast_vocab = init_vocab(vocab_save_dir=args.vocab_save_dir,
-	                       name=args.ast_vocab_name,
-	                       method='word',
-	                       datasets=[dataset_pre_trained.asts],
-	                       save_root=args.vocab_root,
-	                       index_offset=len(code_vocab) + len(nl_vocab),
-	                       load_if_saved=False)
-
 
 def load_and_test(args):
 	code_vocab = load_vocab(vocab_root=args.vocab_root, name=args.code_vocab_name)
-	ast_vocab = load_vocab(vocab_root=args.vocab_root, name=args.ast_vocab_name)
-	nl_vocab = load_vocab(vocab_root=args.vocab_root, name=args.nl_vocab_name)
 
 	# print(code_vocab.encode_sequence('public double METHOD_1 ( TYPE_1 VAR_1 ) { if ( ( this ) == VAR_1 ) return VAR_2 ; if ( ( this . y ) == ( VAR_1 . y ) ) return VAR_3 ; return ( ( VAR_1 . y ) - ( this . y ) ) / ( ( VAR_1 . x ) - ( this . x ) ) ; }'))
 	# print(code_vocab.decode(code_vocab.encode_sequence('METHOD_1')[0]))
@@ -227,5 +201,7 @@ if __name__ == '__main__':
 	main_args.vocab_root = main_args.vocab_save_dir
 	print(main_args.vocab_save_dir)
 
-	# init_all(main_args)
-	load_and_test(main_args)
+	# initialize tokenizers for a new dataset.
+	# In the first iteration, one needs to initialize the tokenizers, then in the following iterations one can ensure with load_and_test() if it is tokenized properly
+	init_all(main_args)
+	#load_and_test(main_args)

@@ -25,23 +25,23 @@ logger = logging.getLogger(__name__)
 
 
 class T5Model(T5BaseModel):
-    def __init__(self, config: BaseConfig, args, mode='pre_training', bug_fix_size='small', **kwargs):
+    def __init__(self, config: BaseConfig, args, mode='pre_training', **kwargs):
         model = T5ForConditionalGeneration.from_pretrained(config.base_t5_model)
         # init tokenizers
         code_vocab = load_vocab(vocab_root=args.vocab_root, name=args.code_vocab_name)
-        ast_vocab = load_vocab(vocab_root=args.vocab_root, name=args.ast_vocab_name)
-        nl_vocab = load_vocab(vocab_root=args.vocab_root, name=args.nl_vocab_name)
+        # ast_vocab = load_vocab(vocab_root=args.vocab_root, name=args.ast_vocab_name)
+        # nl_vocab = load_vocab(vocab_root=args.vocab_root, name=args.nl_vocab_name)
         # init dataset
         if mode == 'pre_training':
             dataset = init_dataset(args=args, mode=enums.TRAINING_MODE_PRE_TRAIN, load_if_saved=True)
         elif mode == 'fine_tunning':
             dataset = [
-                init_dataset(args=args, mode=enums.TRAINING_MODE_FINE_TUNE, task=enums.TASK_BUG_FIX, language=bug_fix_size, split='train'),
-                init_dataset(args=args, mode=enums.TRAINING_MODE_FINE_TUNE, task=enums.TASK_BUG_FIX, language=bug_fix_size, split='valid'),
-                init_dataset(args=args, mode=enums.TRAINING_MODE_FINE_TUNE, task=enums.TASK_BUG_FIX, language=bug_fix_size, split='test')
+                init_dataset(args=args, mode=enums.TRAINING_MODE_FINE_TUNE, task=enums.TASK_CODE2CODE, split='train'),
+                init_dataset(args=args, mode=enums.TRAINING_MODE_FINE_TUNE, task=enums.TASK_CODE2CODE, split='valid'),
+                init_dataset(args=args, mode=enums.TRAINING_MODE_FINE_TUNE, task=enums.TASK_CODE2CODE, split='test')
             ]
 
-        super().__init__(config, model, dataset, mode, args, code_vocab, nl_vocab, ast_vocab)
+        super().__init__(config, model, dataset, mode, args, code_vocab)
 
         self.config = config
         # log the config values
@@ -56,7 +56,7 @@ def main(args):
     pl.seed_everything(int(os.environ.get("SEED", 738)))
 
     config = BaseConfig(
-        base_t5_model="t5-small",
+        base_t5_model="Salesforce/codet5-large", # change
         learning_rate=1e-4,
         epochs=args.n_epoch,
         grad_accu=1,
@@ -126,31 +126,29 @@ def main(args):
     if args.do_fine_tune:
         # there was a pre-training phase before
         if args.pre_train_tasks:
-            print('loading from previous pre-training tasks...')
+            print('loading from previous pre-training tasks (should load from CodeT5)...')
             pl_module = T5Model.load_from_checkpoint(
                 previous_best_checkpoint,
                 config=config,
                 args=args,
                 mode='fine_tunning',
-                bug_fix_size='small'
             )
         else:
-            print('loading from scratch...')
+            print('loading from CodeT5...')
             pl_module = T5Model(
                 config=config,
                 args=args,
-                mode='fine_tunning',
-                bug_fix_size='small'
+                mode='fine_tunning'
             )
 
         # FOR SMALL
-        task = 'bug_fix'
-        print("TASK: ", task + ' small')
-        if not os.path.exists(os.path.join(args.dataset_root, 'model_checkpoints', f'task_{task}_small')):
-            os.makedirs(os.path.join(args.dataset_root, 'model_checkpoints', f'task_{task}_small'))
+        task = 'code2code'
+        print("TASK: ", task)
+        if not os.path.exists(os.path.join(args.dataset_root, 'model_checkpoints', f'task_{task}')):
+            os.makedirs(os.path.join(args.dataset_root, 'model_checkpoints', f'task_{task}'))
         callbacks = [
             pl.callbacks.ModelCheckpoint(
-                dirpath=os.path.join(args.dataset_root, 'model_checkpoints', f'task_{task}_small'),
+                dirpath=os.path.join(args.dataset_root, 'model_checkpoints', f'task_{task}'),
                 monitor=None,
                 save_top_k=1,
                 save_last=True
@@ -159,14 +157,14 @@ def main(args):
 
         pl_module.set_task(task)
         trainer = pl.Trainer(
-            default_root_dir=os.path.join(args.dataset_root, 'model_checkpoints', f'task_{task}_small'),
+            default_root_dir=os.path.join(args.dataset_root, 'model_checkpoints', f'task_{task}'),
             accelerator='dp' if config.num_gpus > 1 else None,
             # amp_backend="apex", amp_level='O2',
             precision=16 if config.fp16 else 32,
             gpus=config.num_gpus,
             val_check_interval=1.0,
             # gradient_clip_val=10,
-            max_epochs=10,
+            max_epochs=config.epochs,
             # max_steps=steps,
             callbacks=callbacks,
             accumulate_grad_batches=config.grad_accu,
@@ -183,14 +181,13 @@ def main(args):
             callbacks[0].best_model_path,
             config=config,
             args=args,
-            mode='fine_tunning',
-            bug_fix_size='small'
+            mode='fine_tunning'
         )
-        print('Testing for small bug fix dataset...')
+        print('Testing for code2code...')
         trainer.test(pl_module)
 
-        pl_module.model.save_pretrained(os.path.join(args.dataset_root, f"{config.base_t5_model}_best_small_bug_fix"))
-        print("Best model saved for small bug fix")
+        pl_module.model.save_pretrained(os.path.join(args.dataset_root, f"{config.base_t5_model}_best_code2code"))
+        print("Best model saved for code2code")
 
 
 if __name__ == "__main__":

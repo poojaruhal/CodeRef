@@ -1,4 +1,4 @@
-python src/init_tokenizers.py \
---dataset-root ../SPT-Code-Dataset/dataset \
---dataset-save-dir ../SPT-Code-Dataset/dataset/dataset_saved \
---vocab-save-dir ../SPT-Code-Dataset/dataset/vocab_saved_new
+python3 src/init_tokenizers.py \
+--dataset-root ../dataset \
+--dataset-save-dir ../dataset/dataset_saved \
+--vocab-save-dir ../dataset/vocab_saved_new

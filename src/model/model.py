@@ -31,7 +31,7 @@ class BaseConfig:
 
 
 class T5BaseModel(pl.LightningModule):
-    def __init__(self, config: BaseConfig, model: T5ForConditionalGeneration, dataset: Union[CodeDataset, List[CodeDataset]], mode: str, args, code_vocab: Vocab, nl_vocab: Vocab, ast_vocab: Vocab, **kwargs):
+    def __init__(self, config: BaseConfig, model: T5ForConditionalGeneration, dataset: Union[CodeDataset, List[CodeDataset]], mode: str, args, code_vocab: Vocab, **kwargs):
         super().__init__()
         self.config = config
         self.args = args
@@ -39,8 +39,6 @@ class T5BaseModel(pl.LightningModule):
 
         #tokenizers
         self.code_vocab = code_vocab
-        self.nl_vocab = nl_vocab
-        self.ast_vocab = ast_vocab
 
         # dataset
         if self.mode == 'pre_training':
@@ -107,9 +105,7 @@ class T5BaseModel(pl.LightningModule):
         self.collate_fn = partial(
             collate_fn,
             args=self.args,
-            code_vocab=self.code_vocab,
-            nl_vocab=self.nl_vocab,
-            ast_vocab=self.ast_vocab
+            code_vocab=self.code_vocab
         )
 
         self.em = 0
@@ -229,7 +225,7 @@ class T5BaseModel(pl.LightningModule):
         for r, c in zip(refs, cans):
             if r == c:
                 self.em += 1
-                idxs.append(16*batch_idx + idx)
+                idxs.append(32*batch_idx + idx)
             idx += 1
         print('EM: ', self.em)
         print()

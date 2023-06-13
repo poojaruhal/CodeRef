@@ -2,15 +2,15 @@
 
 # pre-training
 python src/evaluate.py \
---dataset-root ../SPT-Code-Dataset/dataset \
---dataset-save-dir ../SPT-Code-Dataset/dataset/dataset_saved \
---vocab-save-dir ../SPT-Code-Dataset/dataset/vocab_saved_new \
+--dataset-root ../dataset \
+--dataset-save-dir ../dataset/dataset_saved \
+--vocab-save-dir ../dataset/vocab_saved_new \
 --project-name test_eval \
 --logging-file-path output \
---batch-size 32 \
---eval-batch-size 32 \
---n-epoch 5 \
---n-gpu 0 \
+--batch-size 8 \
+--eval-batch-size 8 \
+--n-epoch 10 \
+--n-gpu 1 \
 --fp16 \
 --model-name pre_train
 

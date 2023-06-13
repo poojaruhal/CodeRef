@@ -7,7 +7,7 @@ from data.vocab import Vocab
 import enums
 
 
-def collate_fn(batch, args, dataset, code_vocab, nl_vocab, ast_vocab):
+def collate_fn(batch, args, dataset, code_vocab):
     """
     Data collator function.
 
@@ -288,6 +288,24 @@ def collate_fn(batch, args, dataset, code_vocab, nl_vocab, ast_vocab):
             is_label=True
         )
 
+    elif dataset.task == enums.TASK_CODE2CODE:
+        inputs, outputs = map(list, zip(*batch))
+        max_code_len = 512
+
+        model_inputs['input_ids'], model_inputs['attention_mask'] = get_batch_inputs_code2code(
+            batch=inputs,
+            code_vocab=code_vocab,
+            max_code_len=max_code_len
+        )
+
+        model_inputs['labels'], _ = get_batch_inputs(
+            batch=outputs,
+            vocab=code_vocab,
+            processor=Vocab.eos_processor,
+            max_len=max_code_len,
+            is_label=True
+        )
+
     return model_inputs
 
 
@@ -325,7 +343,9 @@ def get_batch_inputs(batch: List[str], vocab: Vocab, processor=None, max_len=Non
     # to tensor
     inputs = torch.tensor(inputs, dtype=torch.long)
     padding_mask = torch.tensor(padding_mask, dtype=torch.long)
-
+    #inputs = torch.stack(inputs).detach().to(torch.long) # use low memory, does not keep the gradients of the tensor.To keep the gradient, remove detach()
+    #padding_mask = torch.stack(padding_mask).detach().to(torch.long) # this should use lower memory as it does not keep the gradients of the tensor
+    
     return inputs, padding_mask
 
 
@@ -377,5 +397,21 @@ def get_batch_inputs_bug_fix(batch: List[str], code_vocab: Vocab, nl_vocab: Voca
     inputs = torch.cat([inputs for inputs in [code_inputs, comment_inputs] if inputs is not None], dim=-1)
     padding_mask = torch.cat([mask for mask in [code_padding_mask, comment_padding_mask]
                               if mask is not None], dim=-1)
+
+    return inputs, padding_mask
+
+def get_batch_inputs_code2code(batch: List[str], code_vocab: Vocab, max_code_len=None):
+    code_inputs, code_padding_mask = get_batch_inputs(
+        batch=batch,
+        vocab=code_vocab,
+        processor=Vocab.sep_processor,
+        max_len=max_code_len
+    )
+
+    inputs = torch.tensor(code_inputs, dtype=torch.long)
+    padding_mask = torch.tensor(code_padding_mask, dtype=torch.long)
+
+    #inputs = torch.stack(code_inputs).detach().to(torch.long) # this should use lower memory as it does not keep the gradients of the tensor.If you want to keep the gradient then remove detach()
+    #padding_mask = torch.stack(code_padding_mask).detach().to(torch.long) # this should use lower memory as it does not keep the gradients of the tensor
 
     return inputs, padding_mask

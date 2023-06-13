@@ -8,11 +8,12 @@ import pickle
 import random
 
 import enums
-from .data_utils import load_dataset_from_dir, parse_for_bug_fix
+from .data_utils import parse_for_code2code
 from .vocab import Vocab
-from eval.bleu.google_bleu import avg_bleu
 
-from generator_network import generator_java
+#commented temporarily
+#from eval.bleu.google_bleu import avg_bleu
+#from generator_network import generator_java
 
 logger = logging.getLogger(__name__)
 
@@ -47,9 +48,10 @@ class CodeDataset(Dataset):
 
         # load pre-training dataset
         if self.mode == 'pre_train':
-            self.paths, self.languages, self.sources, self.codes, self.asts, self.names, self.codes_wo_name, \
-                self.names_wo_name, self.only_names, self.docs, self.rtd_masked_code, self.rtd_output, self.code_tags = load_dataset_from_dir(dataset_dir=self.dataset_dir)
-            self.size = len(self.codes)
+            pass
+            # self.paths, self.languages, self.sources, self.codes, self.asts, self.names, self.codes_wo_name, \
+            #     self.names_wo_name, self.only_names, self.docs, self.rtd_masked_code, self.rtd_output, self.code_tags = load_dataset_from_dir(dataset_dir=self.dataset_dir)
+            # self.size = len(self.codes)
         # load fine-tuning dataset
         else:
             assert split
@@ -57,19 +59,23 @@ class CodeDataset(Dataset):
             self.dataset_dir = os.path.join(self.dataset_dir, task)
             # bug fix
             if task == enums.TASK_BUG_FIX:
+                pass
+
+            elif task == enums.TASK_CODE2CODE:
                 assert split in ['train', 'valid', 'test']
                 # language here stands for dataset scale
-                assert language in ['small', 'medium']
-                self.dataset_dir = os.path.join(self.dataset_dir, language)
-                buggy_path = os.path.join(self.dataset_dir, f'{split}.buggy-fixed.buggy')
-                fixed_path = os.path.join(self.dataset_dir, f'{split}.buggy-fixed.fixed')
+                self.dataset_dir = os.path.join(self.dataset_dir)
+                # TODO: create a split of data.tsv into train and test for each split - total 6 files
+                buggy_path = os.path.join(self.dataset_dir, f'{split}.submitted-fixed.submitted')
+                fixed_path = os.path.join(self.dataset_dir, f'{split}.submitted-fixed.fixed')
                 self.paths['buggy'] = buggy_path
                 self.paths['fixed'] = fixed_path
-                self.codes, self.comments, self.targets = parse_for_bug_fix(
+
+                self.codes, self.targets = parse_for_code2code(
                     buggy_path=buggy_path,
                     fixed_path=fixed_path
                 )
-                assert len(self.codes) == len(self.targets) == len(self.comments)
+                assert len(self.codes) == len(self.targets)
                 self.size = len(self.codes)
 
     def __getitem__(self, index):
@@ -158,6 +164,13 @@ class CodeDataset(Dataset):
             task_prefix = 'TASK_BUG_FIX: '
 
             return task_prefix + self.codes[index] + Vocab.SEP_TOKEN + self.comments[index], self.targets[index]
+
+        # bug fix
+        elif self.task == enums.TASK_CODE2CODE:
+            task_prefix = 'TASK_CODE2CODE: '
+
+            return task_prefix + self.codes[index], self.targets[index]
+
 
     def __len__(self):
         return self.size

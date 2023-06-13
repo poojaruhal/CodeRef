@@ -56,7 +56,7 @@ def main(args):
     pl.seed_everything(int(os.environ.get("SEED", 738)))
 
     config = BaseConfig(
-        base_t5_model="t5-small",
+        base_t5_model="Salesforce/codet5-large",
         learning_rate=1e-4,
         epochs=args.n_epoch,
         grad_accu=1,
@@ -68,7 +68,7 @@ def main(args):
     wandb_logger = WandbLogger(project=args.project_name)
     wandb_logger.experiment.config["batch_size"] = args.eval_batch_size
 
-    task = 'bug_fix'
+    task = 'TASK_CODE2CODE'
     print("TASK: ", task + ' small')
 
     trainer = pl.Trainer(
